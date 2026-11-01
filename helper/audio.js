@@ -174,7 +174,12 @@ function create(ctx) {
     }
     let output = '';
     let done = false;
-    const timeout = setTimeout(() => { try { child.kill(); } catch (_) {} finish(new Error('ARC getter timed out')); }, 1500);
+    const timeout = setTimeout(() => {
+      try {
+        child.kill();
+      } catch (_) {}
+      finish(new Error('ARC getter timed out'));
+    }, 1500);
     function finish(error) {
       if (done) return;
       done = true;
@@ -196,13 +201,17 @@ function create(ctx) {
           }
           if (changed && initialized) showVolumeOSD(status);
           if (value !== previous) activeUntil = Date.now() + 2500;
-        } catch (e) { error = e; }
+        } catch (e) {
+          error = e;
+        }
       }
       if (error && !arcFailed) console.log('audio: ARC volume unavailable: ' + error.message);
       arcFailed = !!error;
       arcTimer = setTimeout(pollArc, Date.now() < activeUntil ? 150 : 1000);
     }
-    child.stdout.on('data', data => { output += data.toString('utf8'); });
+    child.stdout.on('data', data => {
+      output += data.toString('utf8');
+    });
     child.on('error', finish);
     child.on('close', code => finish(code ? new Error('ARC getter exited ' + code) : null));
   }
