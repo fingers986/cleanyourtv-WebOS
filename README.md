@@ -13,12 +13,12 @@ A fast home screen for rooted LG webOS TVs, with Live TV from your own playlist,
 picture notifications, optional on-device voice recognition and an optional debloat of LG's ads and telemetry.
 
 > [!NOTE]
-> **LG's system files are not modified.** The launcher takes over Home with a mount that exists only in RAM, so a reboot without the
+> **LG's system files are not modified.** When enabled as Home, the launcher takes over Home with a mount that exists only in RAM, so a reboot without the
 > boot scripts brings LG's Home back. Everything we install is stored in `/media/developer/cleanyourtv` (plus two boot scripts and
 > the key binds), and the uninstall removes it. It runs on the TV: no server and no account of ours, and the project collects no
 > data. Optional features contact the services you choose; [Security](https://lasharor.github.io/cleanyourtv-WebOS/security/) lists them.
 
-**CleanYourTV** replaces LG's Home with a launcher: a dock of four apps, a top shelf, an app grid sorted by use, an Inputs
+**CleanYourTV** can replace LG's Home with a launcher: a dock of four apps, a top shelf, an app grid sorted by use, an Inputs
 picker, a Settings shortcut and a clock. A small service runs on the TV as root and adds the rest. A manager app on the TV
 sets up, updates and removes everything.
 
@@ -55,10 +55,9 @@ sets up, updates and removes everything.
      ssh root@192.168.1.50 'curl -fsSL https://raw.githubusercontent.com/lasharor/cleanyourtv-WebOS/main/install.sh | sh'
      ```
 
-3. On the TV, open **CleanYourTV**, choose the options and **Set up now**. It takes about a minute and the screen blinks once.
+3. On the TV, open **CleanYourTV**, choose the options and **Set up now**. It takes about a minute; LG’s Home stays selected. You can switch to CleanYourTV as Home later in the manager app.
 
-That's it. The launcher is LG's Home from then on. If the new Home does not come up, the setup removes the boot scripts and
-restarts the TV with LG's Home. The [installation guide](https://lasharor.github.io/cleanyourtv-WebOS/install/) has the details
+That's it. CleanYourTV and its service are set up while LG's Home remains in use. To make the launcher Home, enable **CleanYourTV as Home** in the manager app. The [installation guide](https://lasharor.github.io/cleanyourtv-WebOS/install/) has the details
 and troubleshooting.
 
 ---
