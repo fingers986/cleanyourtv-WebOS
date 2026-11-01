@@ -5,9 +5,9 @@
 1. Root the TV and install the Homebrew Channel ([rootmy.tv](https://rootmy.tv)).
 2. Install the **CleanYourTV** manager app: from the [Homebrew Channel](#from-the-homebrew-channel), or from your computer with the
    install command and the TV's IP address (below).
-3. On the TV, open **CleanYourTV** and choose **Set up now**. It takes about a minute and the screen blinks once.
+3. On the TV, open **CleanYourTV** and choose **Set up now**. It takes about a minute; LG’s Home stays selected. You can switch to CleanYourTV as Home later in the manager app.
 
-That is all. The launcher is LG's Home from then on.
+That is all. CleanYourTV and its service are set up while LG's Home remains in use. To make the launcher Home, enable **CleanYourTV as Home** in the manager app.
 
 ## Requirements
 
@@ -64,8 +64,8 @@ The setup:
 1. saves the original state in `/media/developer/cleanyourtv/backup`;
 2. installs the launcher and the service;
 3. adds boot scripts to `/var/lib/webosbrew/init.d/`;
-4. replaces LG's Home at boot (in RAM) and starts the service;
-5. checks that the new Home came up. If it did not, it removes the boot scripts and restarts the TV with LG's Home.
+4. keeps LG's Home selected and starts the service. To replace LG's Home later, enable **CleanYourTV as Home** in the manager app;
+5. checks that the service is running. If CleanYourTV is selected as Home, it also checks that the launcher came up; a failed setup removes the boot scripts and restarts with LG's Home.
 
 Its log is `/media/developer/cytv-setup.log`, kept across the restart, with the service log next to it in
 `cytv-setup.log.service`.
