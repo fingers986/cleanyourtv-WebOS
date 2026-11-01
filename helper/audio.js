@@ -25,6 +25,11 @@ function create(ctx) {
   let lastLaunchAt = 0;
   let currentTheme = '';
   let proc = null;
+  let arcTimer = null;
+  let arcBusy = false;
+  let arcVolume = null;
+  let activeUntil = 0;
+  let arcFailed = false;
   let stock = ''; // LG's own bar: 'on', 'off' (we switched it off) or 'unsupported' (the TV does not report the setting)
   let stockBusy = Promise.resolve();
   const option = () => {
@@ -148,6 +153,60 @@ function create(ctx) {
     }
   }
 
+  // Use the absolute volume reported by the ARC device. master/getVolume is
+  // still subscribed below for output, mute and activity, but can drift from
+  // the soundbar's own level.
+  function pollArc() {
+    arcTimer = null;
+    if (!running || arcBusy || status.output !== 'external_arc') {
+      if (running) arcTimer = setTimeout(pollArc, 1000);
+      return;
+    }
+    arcBusy = true;
+    const previous = arcVolume;
+    let child;
+    try {
+      child = spawn('script', ['-q', '-c', "luna-send -n 1 'luna://com.webos.service.eim/getArcVolume' '{}'", '/dev/null']);
+    } catch (e) {
+      arcBusy = false;
+      arcTimer = setTimeout(pollArc, 1000);
+      return;
+    }
+    let output = '';
+    let done = false;
+    const timeout = setTimeout(() => { try { child.kill(); } catch (_) {} finish(new Error('ARC getter timed out')); }, 1500);
+    function finish(error) {
+      if (done) return;
+      done = true;
+      clearTimeout(timeout);
+      arcBusy = false;
+      if (!running) return;
+      if (!error) {
+        try {
+          const match = output.match(/\{[^]*\}/);
+          const response = match && JSON.parse(match[0]);
+          const value = response && response.Volume;
+          if (typeof value !== 'number' || !isFinite(value) || value < 0 || value > 100) throw new Error('invalid ARC volume');
+          arcFailed = false;
+          arcVolume = value;
+          const changed = status.volume !== value;
+          if (changed) {
+            status = Object.assign({}, status, { volume: value, seq: ++seq });
+            notifyWaiters();
+          }
+          if (changed && initialized) showVolumeOSD(status);
+          if (value !== previous) activeUntil = Date.now() + 2500;
+        } catch (e) { error = e; }
+      }
+      if (error && !arcFailed) console.log('audio: ARC volume unavailable: ' + error.message);
+      arcFailed = !!error;
+      arcTimer = setTimeout(pollArc, Date.now() < activeUntil ? 150 : 1000);
+    }
+    child.stdout.on('data', data => { output += data.toString('utf8'); });
+    child.on('error', finish);
+    child.on('close', code => finish(code ? new Error('ARC getter exited ' + code) : null));
+  }
+
   function start() {
     currentTheme = option();
     syncStockVolumeOSD(currentTheme);
@@ -178,18 +237,26 @@ function create(ctx) {
               const newMute = typeof v.muteStatus === 'boolean' ? v.muteStatus : status.mute;
               const newOutput = String(v.soundOutput || status.output || 'tv_speaker');
               const newMax = typeof v.maxVolume === 'number' ? v.maxVolume : 100;
-              const changed = !initialized || newVol !== status.volume || newMute !== status.mute || newOutput !== status.output;
+              const displayVol = newOutput === 'external_arc' && arcVolume !== null ? arcVolume : newVol;
+              const changed = !initialized || displayVol !== status.volume || newMute !== status.mute || newOutput !== status.output;
 
               status = {
-                volume: newVol,
+                volume: displayVol,
                 mute: newMute,
                 output: newOutput,
                 max: newMax,
                 seq: ++seq,
               };
               notifyWaiters();
-              if (initialized && changed) {
+              if (initialized && changed && (newOutput !== 'external_arc' || arcVolume !== null)) {
                 showVolumeOSD(status);
+              }
+              if (newOutput === 'external_arc' && changed) {
+                activeUntil = Date.now() + 2500;
+                if (!arcBusy && (!arcTimer || Date.now() < activeUntil)) {
+                  if (arcTimer) clearTimeout(arcTimer);
+                  pollArc();
+                }
               }
               initialized = true;
             }
@@ -207,10 +274,12 @@ function create(ctx) {
       proc.on('close', again);
     }
     run();
+    pollArc();
   }
 
   function stop() {
     running = false;
+    if (arcTimer) clearTimeout(arcTimer);
     if (proc) {
       try {
         proc.kill();

@@ -108,6 +108,6 @@ and provide translations in `i18n/*.json` for the new strings.
 
 - **Overlay Window:** `com.cleanyourtv.notify` runs as a transparent `topui` web window.
 - **Input Neutrality:** Calls `setInputRegion([{x:0,y:0,width:0,height:0}])` and `setKeyMask([])` so all remote and pointer events pass straight through to whatever app or video is currently playing.
-- **Audio Service:** `helper/audio.js` subscribes to `com.webos.service.audio/master/getVolume` and notifies the overlay via `notify.show({ kind: 'volume', ... })`.
+- **Audio Service:** `helper/audio.js` subscribes to `com.webos.service.audio/master/getVolume` for output and mute state. When the output is `external_arc`, it reads the displayed level from `com.webos.service.eim/getArcVolume` and sends it to the overlay via `notify.show({ kind: 'volume', ... })`. Other outputs continue to use the master volume. ARC reporting depends on the TV and soundbar's HDMI-CEC support.
 - **System Fallback:** Setting `volumeTheme` to `'system'` sets `com.webos.surfacemanager.volumeOSD` back to the value saved in `backup/volume-osd.orig`, restoring LG's volume graphics.
 
