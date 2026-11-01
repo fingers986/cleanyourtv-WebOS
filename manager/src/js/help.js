@@ -110,7 +110,7 @@ var INFO = {
   'Update to': 'A newer package is available. Install it before the setup: it may contain fixes for your firmware.',
   'Take over the Input key': 'The remote\u2019s Input button opens our Inputs list instead of LG\u2019s picker. You can change this later.',
   'Set up now':
-    'Installs the launcher, replaces LG\u2019s Home at boot and starts the service. About a minute; the screen blinks once. If the new Home does not come up, the setup removes itself and restarts the TV.',
+    'Installs the launcher and starts the service while keeping LG\u2019s Home selected. Enable CleanYourTV as Home later in the manager app if you want to use its launcher. About a minute; the screen may blink once.',
   'Set up anyway':
     'Your firmware is not in the compatibility list and LG\u2019s Home looks different. This tries it anyway; a failed start restarts the TV with LG\u2019s Home.',
 };
