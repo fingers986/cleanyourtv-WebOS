@@ -130,7 +130,7 @@ function create(ctx) {
     const now = Date.now();
     // A running notify app updates through its long-poll; only launch it when there is no warm client.
     if (waiters.some(w => w.client === 'notify') || now - lastNotifyAt < 1200) return;
-    // ARC is sampled at 150 ms while active. Merge only duplicate launch requests for the same change.
+    // ARC is sampled at 50 ms while active. Merge only duplicate launch requests for the same change.
     if (now - lastLaunchAt < 80) return;
     lastLaunchAt = now;
 
@@ -209,7 +209,7 @@ function create(ctx) {
       }
       if (error && !arcFailed) console.log('audio: ARC volume unavailable: ' + error.message);
       arcFailed = !!error;
-      arcTimer = setTimeout(pollArc, Date.now() < activeUntil ? 150 : 1000);
+      arcTimer = setTimeout(pollArc, Date.now() < activeUntil ? 50 : 1000);
     }
     child.stdout.on('data', data => {
       output += data.toString('utf8');
