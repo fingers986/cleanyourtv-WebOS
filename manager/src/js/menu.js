@@ -385,7 +385,7 @@ function build() {
     setupIdx = rows.length;
     rows.push({
       label: 'Set up now',
-      sub: 'the screen blinks once',
+      sub: 'LG’s Home stays selected',
       fn: function () {
         doSetup(false);
       },
