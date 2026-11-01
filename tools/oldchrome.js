@@ -191,11 +191,7 @@ function run(bin, url, extra, budget) {
         // Chromium 79's Linux headless shell intermittently fails its own Runtime.evaluate
         // while serializing outerHTML. In that case the page was not handed to this test,
         // so report the check as skipped; real script errors and empty rendered pages still fail.
-        if (
-          e[1] === '706915' &&
-          dom.indexOf('<body') < 0 &&
-          (r.stderr || '').indexOf('Failed to serialize document: Uncaught') >= 0
-        ) {
+        if (e[1] === '706915' && dom.indexOf('<body') < 0 && (r.stderr || '').indexOf('Failed to serialize document: Uncaught') >= 0) {
           console.log('SKIP ' + e[0] + ': ' + p[0] + ' (headless document serialization failed after retries)');
           marks.length = 0;
           continue;
