@@ -1,6 +1,6 @@
 function doSetup(force) {
   forceOffer = false;
-  banner('Setting up\u2026 the screen blinks once while LG\u2019s system restarts', 'work');
+  banner('Setting up\u2026 LG\u2019s Home stays selected; the screen may blink once', 'work');
   var flags =
     (setup.debloat ? '--debloat' : '--no-debloat') + ' ' + (setup.inputKey ? '--input-key' : '--no-input-key') + (force ? ' --force' : '');
   rootExec(
