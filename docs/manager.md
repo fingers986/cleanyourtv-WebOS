@@ -27,7 +27,7 @@
 The manager works without the service for two things: checking for a newer package and installing it, so a broken service can
 be repaired from the TV. It follows the same **Update channel** as the service: on the dev channel it offers the dev build's package.
 **Set up now** starts from the options that are already saved (Input key, Debloat), so setting up again does not switch them back
-on.
+on. A fresh setup keeps LG's Home selected; enable **CleanYourTV as Home** later if you want the launcher to open with the Home key.
 
 ## Share log
 
