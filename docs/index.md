@@ -1,6 +1,6 @@
 # CleanYourTV for LG webOS
 
-A fast home screen for rooted LG webOS TVs. It replaces LG's Home with a dock of four apps, a top shelf and an app grid,
+A fast home screen for rooted LG webOS TVs. It can replace LG's Home with a dock of four apps, a top shelf and an app grid,
 and adds Live TV from your own playlist, an Inputs list on the Input key, picture notifications from your network, optional
 on-device voice recognition, and an optional debloat of LG's ads and telemetry.
 
@@ -20,7 +20,7 @@ on-device voice recognition, and an optional debloat of LG's ads and telemetry.
 - **Debloat.** Stops LG's ad and telemetry services and blocks a few ad servers. [More](debloat.md).
 - **Manager app.** Sets up, updates and removes everything from the TV. [More](manager.md).
 
-LG's system files are not modified. The launcher takes over Home with a mount that exists only in RAM, so a reboot without the
+LG's system files are not modified. When enabled as Home, the launcher takes over Home with a mount that exists only in RAM, so a reboot without the
 boot scripts brings LG's Home back. Everything we install is stored in `/media/developer/cleanyourtv` (plus two boot scripts and the
 key binds), and the uninstall removes it. The project has no server or account and collects no data; optional features contact the
 services you choose (update checks go to GitHub). See [What it changes on the TV](tv-changes.md) and [Security](security.md).
