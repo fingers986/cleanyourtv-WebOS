@@ -36,7 +36,10 @@ run(async () => {
   fs.writeFileSync(cfg, '{}');
   opts('', '');
   c = JSON.parse(fs.readFileSync(cfg, 'utf8'));
-  ok(c.options.inputKey === false && c.options.debloat === false, 'a first install without values defaults both to off');
+  ok(
+    c.options.inputKey === false && c.options.debloat === false,
+    'a first install without values defaults both to off'
+  );
   // the stand-in way (LG's native Home): the program it is mounted over, and the request to webapp-mgr
   const jtool = args => cp.spawnSync(process.execPath, [jt].concat(args), { encoding: 'utf8' });
   const prog = path.join(tmp, 'lg-home-program'),
@@ -121,7 +124,10 @@ run(async () => {
   );
   ok(fs.existsSync(path.join(D, 'DISABLE')), "a fresh setup keeps LG's Home selected");
   let conf = JSON.parse(fs.readFileSync(path.join(D, 'config.json'), 'utf8'));
-  ok(conf.options.inputKey === false && conf.options.debloat === false, 'a fresh setup stores Debloat and Input key off');
+  ok(
+    conf.options.inputKey === false && conf.options.debloat === false,
+    'a fresh setup stores Debloat and Input key off'
+  );
   const initd = path.join(R, 'var/lib/webosbrew/init.d');
   ok(
     fs.lstatSync(path.join(initd, '10-cleanyourtv-home')).isSymbolicLink() &&
