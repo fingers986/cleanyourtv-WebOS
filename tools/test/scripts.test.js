@@ -119,6 +119,7 @@ run(async () => {
       fs.existsSync(path.join(D, 'app', 'version.json')),
     'the service files and the launcher are in place'
   );
+  ok(fs.existsSync(path.join(D, 'DISABLE')), "a fresh setup keeps LG's Home selected");
   let conf = JSON.parse(fs.readFileSync(path.join(D, 'config.json'), 'utf8'));
   ok(conf.options.inputKey === false && conf.options.debloat === true, 'the setup stores the chosen options');
   const initd = path.join(R, 'var/lib/webosbrew/init.d');
@@ -134,6 +135,7 @@ run(async () => {
     b.status === 0 && conf.options.inputKey === false && /options: .*\(kept\)/.test(out2),
     'an update keeps the Input key switched off (issues 6 and 7)'
   );
+  ok(fs.existsSync(path.join(D, 'DISABLE')), "an update preserves LG's Home selection");
   ok(fs.existsSync(path.join(D, 'backup', 'service-prev.tgz')), 'an update keeps the previous service files for a rollback');
   fs.writeFileSync(
     path.join(R, 'usr/palm/applications/com.webos.app.home/appinfo.json'),
