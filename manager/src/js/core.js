@@ -27,7 +27,7 @@ var napi = null,
   view = 'main',
   pending = null,
   pollT = 0,
-  setup = { debloat: true, inputKey: true },
+  setup = { debloat: false, inputKey: false },
   offline = false,
   busyMsg = '';
 function $(i) {

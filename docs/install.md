@@ -56,8 +56,8 @@ Open **CleanYourTV** from the app list, choose the options and **Set up now**.
 
 | Option | Default |
 |---|---|
-| Debloat LG's ads and telemetry | on |
-| Take over the Input key | on |
+| Debloat LG's ads and telemetry | off |
+| Take over the Input key | off |
 
 The setup:
 

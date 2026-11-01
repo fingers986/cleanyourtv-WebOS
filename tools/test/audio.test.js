@@ -34,6 +34,20 @@ function tv(o) {
 }
 const saved = path.join(P.D, 'backup', 'volume-osd.orig');
 const wait = () => new Promise(r => setTimeout(r, 20));
+function pendingPoll(feature, url) {
+  return new Promise(resolve => {
+    const res = new EventEmitter();
+    res.finished = false;
+    res.writeHead = code => {
+      res.code = code;
+    };
+    res.end = body => {
+      res.finished = true;
+      resolve({ code: res.code, j: JSON.parse(body) });
+    };
+    feature.handle({ url, method: 'GET', headers: {} }, res, url.split('?')[0]);
+  });
+}
 
 run(async () => {
   ok(
@@ -106,5 +120,42 @@ run(async () => {
   t.procs[0].stdout.emit('data', Buffer.from('{"volumeStatus":{"volume":40,"muteStatus":true}}\n'));
   x = await call(a, '/api/audio/volume?since=' + seq);
   ok(x.j.volume === 40 && x.j.mute === true && x.j.seq > seq, 'a newer status answers a poll at once');
+  a.stop();
+
+  // A warm notify overlay receives the confirmed ARC value through its long-poll without relaunching.
+  t = tv({ value: true });
+  a = audio.create({
+    config: memoryConfig({ options: { volumeTheme: 'pill' } }),
+    luna: t.luna,
+    spawn: t.spawn,
+    feature: () => null,
+  });
+  await a.syncStockVolumeOSD('pill');
+  a.start();
+  await wait();
+  // First master notification establishes ARC output, then the ARC getter sets the actual level.
+  t.procs[0].stdout.emit(
+    'data',
+    Buffer.from('{"volumeStatus":{"volume":37,"muteStatus":false,"soundOutput":"external_arc","maxVolume":100}}\n')
+  );
+  await wait();
+  t.procs[1].stdout.emit('data', Buffer.from('{"Volume":37}\n'));
+  t.procs[1].emit('close', 0);
+  await wait();
+  let current = await call(a, '/api/audio/volume?client=notify');
+  let poll = pendingPoll(a, '/api/audio/volume?since=' + current.j.seq + '&client=notify');
+
+  // The master service changes first, but its value is not the soundbar's actual level.
+  t.procs[0].stdout.emit(
+    'data',
+    Buffer.from('{"volumeStatus":{"volume":38,"muteStatus":false,"soundOutput":"external_arc","maxVolume":100}}\n')
+  );
+  await wait();
+  ok(t.procs.length === 3, 'an ARC volume event starts an immediate soundbar read');
+  t.procs[2].stdout.emit('data', Buffer.from('{"Volume":38}\n'));
+  t.procs[2].emit('close', 0);
+  const updated = await poll;
+  ok(updated.j.volume === 38, 'the warm overlay poll receives the confirmed ARC level');
+  ok(!t.calls.some(c => /^launch/.test(c)), 'a warm overlay is updated without another app launch');
   a.stop();
 });

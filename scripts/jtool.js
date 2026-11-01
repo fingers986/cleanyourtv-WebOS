@@ -42,8 +42,8 @@ if (cmd === 'kind') {
   // options <config.json> <debloat 1|0|''> <inputKey 1|0|''>
   var c = rj(a[1], {}),
     op = (c.options = c.options || {});
-  if (op.debloat === undefined) op.debloat = true;
-  if (op.inputKey === undefined) op.inputKey = true;
+  if (op.debloat === undefined) op.debloat = false;
+  if (op.inputKey === undefined) op.inputKey = false;
   var was = JSON.stringify({ debloat: op.debloat, inputKey: op.inputKey });
   if (a[2] !== '' && a[2] !== undefined) op.debloat = a[2] === '1';
   if (a[3] !== '' && a[3] !== undefined) op.inputKey = a[3] === '1';

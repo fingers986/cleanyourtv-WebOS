@@ -28,6 +28,7 @@ function create(ctx) {
   let arcTimer = null;
   let arcBusy = false;
   let arcVolume = null;
+  let masterVolume = null;
   let activeUntil = 0;
   let arcFailed = false;
   let stock = ''; // LG's own bar: 'on', 'off' (we switched it off) or 'unsupported' (the TV does not report the setting)
@@ -51,9 +52,9 @@ function create(ctx) {
 
   function notifyWaiters() {
     if (!waiters.length) return;
-    lastNotifyAt = Date.now();
     const payload = getPayload();
     const list = waiters.splice(0, waiters.length);
+    if (list.some(w => w.client === 'notify')) lastNotifyAt = Date.now();
     for (const w of list) {
       clearTimeout(w.timer);
       try {
@@ -127,9 +128,10 @@ function create(ctx) {
     if (currentTheme === 'system' || stock !== 'off') return; // LG's own bar shows unless it is switched off
 
     const now = Date.now();
-    // If notify app has a pending waiter or polled very recently, stream over socket without SAM launch
-    if (waiters.length > 0 || now - lastNotifyAt < 1200) return;
-    if (now - lastLaunchAt < 1500) return;
+    // A running notify app updates through its long-poll; only launch it when there is no warm client.
+    if (waiters.some(w => w.client === 'notify') || now - lastNotifyAt < 1200) return;
+    // ARC is sampled at 150 ms while active. Merge only duplicate launch requests for the same change.
+    if (now - lastLaunchAt < 80) return;
     lastLaunchAt = now;
 
     const notify = ctx.feature('notify');
@@ -243,26 +245,38 @@ function create(ctx) {
             const v = j.volumeStatus || j;
             if (v && (typeof v.volume === 'number' || typeof v.muteStatus === 'boolean')) {
               const newVol = typeof v.volume === 'number' ? v.volume : status.volume;
+              const masterChanged = typeof v.volume === 'number' && v.volume !== masterVolume;
+              if (typeof v.volume === 'number') masterVolume = v.volume;
               const newMute = typeof v.muteStatus === 'boolean' ? v.muteStatus : status.mute;
               const newOutput = String(v.soundOutput || status.output || 'tv_speaker');
               const newMax = typeof v.maxVolume === 'number' ? v.maxVolume : 100;
               const displayVol = newOutput === 'external_arc' && arcVolume !== null ? arcVolume : newVol;
-              const changed = !initialized || displayVol !== status.volume || newMute !== status.mute || newOutput !== status.output;
+              const changed =
+                !initialized ||
+                displayVol !== status.volume ||
+                newMute !== status.mute ||
+                newOutput !== status.output ||
+                newMax !== status.max;
 
-              status = {
-                volume: displayVol,
-                mute: newMute,
-                output: newOutput,
-                max: newMax,
-                seq: ++seq,
-              };
-              notifyWaiters();
-              if (initialized && changed && (newOutput !== 'external_arc' || arcVolume !== null)) {
-                showVolumeOSD(status);
+              // The master service may report a different number from the ARC device.
+              // Keep the last ARC value on screen and don't wake the overlay's long-poll
+              // until the ARC getter confirms a visible status change.
+              if (changed) {
+                status = {
+                  volume: displayVol,
+                  mute: newMute,
+                  output: newOutput,
+                  max: newMax,
+                  seq: ++seq,
+                };
+                notifyWaiters();
+                if (initialized && (newOutput !== 'external_arc' || arcVolume !== null)) {
+                  showVolumeOSD(status);
+                }
               }
-              if (newOutput === 'external_arc' && changed) {
+              if (newOutput === 'external_arc' && (changed || masterChanged)) {
                 activeUntil = Date.now() + 2500;
-                if (!arcBusy && (!arcTimer || Date.now() < activeUntil)) {
+                if (!arcBusy) {
                   if (arcTimer) clearTimeout(arcTimer);
                   pollArc();
                 }
@@ -305,14 +319,15 @@ function create(ctx) {
     syncStockVolumeOSD,
     handle(req, res, u) {
       const q = req.url.split('?')[1] || '';
-      if (/[?&]client=notify\b/.test(q)) lastNotifyAt = Date.now();
+      const client = /(?:^|&)client=notify\b/.test(q) ? 'notify' : '';
+      if (client) lastNotifyAt = Date.now();
       const m = /[?&]since=(\d+)/.exec('?' + q);
       const since = m ? parseInt(m[1], 10) : 0;
       const payload = getPayload();
       if (status.seq > since) {
         return web.json(res, payload);
       }
-      const item = { res, timer: null };
+      const item = { res, timer: null, client };
       item.timer = setTimeout(() => {
         const idx = waiters.indexOf(item);
         if (idx >= 0) waiters.splice(idx, 1);

@@ -38,8 +38,8 @@ run(async () => {
 
   let r = await ask('status', 'GET');
   ok(
-    r.j.options.liveTv === true && r.j.options.inputKey === true && r.j.options.debloat === true && r.j.keys.guide === '',
-    'options are on by default and no Guide key is learned'
+    r.j.options.liveTv === true && r.j.options.inputKey === false && r.j.options.debloat === false && r.j.keys.guide === '',
+    'Debloat and Input key are off by default; Live TV is on and no Guide key is learned'
   );
   r = await ask('options', 'POST', { liveTv: false });
   ok(
@@ -119,7 +119,10 @@ run(async () => {
     'config.json keeps every section, is replaced atomically and readable by root only'
   );
   fs.writeFileSync(file, '[1,2]');
-  ok(JSON.stringify(c.get()) === '{}' && c.options().inputKey === true, 'a broken config.json reads as empty, with the defaults');
+  ok(
+    JSON.stringify(c.get()) === '{}' && c.options().inputKey === false && c.options().debloat === false,
+    'a broken config.json reads as empty, with the defaults'
+  );
 
   // the debloat's groups: switching one off while the debloat is on undoes only that group; switching it on again applies only it
   const exec = req('exec'),
@@ -129,6 +132,8 @@ run(async () => {
     ran.push(c);
     return { ok: true, out: '' };
   };
+  await ask('options', 'POST', { debloat: true, debloatOff: [] });
+  ran.length = 0;
   r = await ask('options', 'POST', { debloatOff: ['logs', 'nonsense', 'logs'] });
   ok(
     r.j.options.debloat === true &&
