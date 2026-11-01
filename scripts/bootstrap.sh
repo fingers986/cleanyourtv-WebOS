@@ -2,7 +2,8 @@
 # CleanYourTV service bootstrap. Runs as root on the TV, from the service folder of the installed package:
 #   sh bootstrap.sh install [--no-debloat] [--no-input-key] [--debloat] [--input-key] [--no-start] [--no-verify] [--force]
 #   sh bootstrap.sh update <version>      after the manager installed a newer package (restarts the service, undoes it if it fails)
-# It copies the service files to /media/developer/cleanyourtv, installs the boot scripts, replaces LG's Home and starts the service.
+# It copies the service files to /media/developer/cleanyourtv, installs the boot scripts and starts the service. A fresh install keeps
+# LG's Home selected until the user enables CleanYourTV as Home in the manager app.
 # Idempotent: running it again repairs a broken install. What differs between TVs (the notification window type, whether the
 # firmware is in the compatibility list, whether LG's Home is a kind we support) is decided by helper/tvprofile.js, the same rules the
 # service follows. The steps are the functions below; the order is at the end of the file.
@@ -18,6 +19,8 @@ HOME_DIR=$R/usr/palm/applications/com.webos.app.home
 
 MODE=${1:-install}; [ $# -gt 0 ] && shift
 WANT=""; [ "$MODE" = update ] && { WANT=$1; shift; }
+FIRST_INSTALL=0
+[ "$MODE" = install ] && [ ! -f "$D/backup/home-appinfo.orig.json" ] && FIRST_INSTALL=1
 DEBLOAT=""; INPUTKEY=""; START=1; VERIFY=1; FORCE=0
 for a in "$@"; do
   case "$a" in
@@ -138,7 +141,12 @@ install_launcher() {
 set_options() {
   $J options "$D/config.json" "$DEBLOAT" "$INPUTKEY"
   [ -n "$CYTV_REPO" ] && echo "$CYTV_REPO ${CYTV_REF:-main}" > $D/source
-  [ "$MODE" = install ] && rm -f $D/DISABLE $D/DISABLE-DEBLOAT   # setting up selects our Home; an update keeps the choice
+  if [ "$MODE" = install ]; then
+    rm -f $D/DISABLE-DEBLOAT
+    if [ "$FIRST_INSTALL" = 1 ]; then
+      touch $D/DISABLE   # keep LG's Home on a fresh setup; the user can enable ours in the manager
+    fi
+  fi
 }
 
 boot_scripts() {
@@ -199,7 +207,7 @@ restart_for_update() {
 
 # ---- a new install: start everything ----
 start_install() {
-  say "starting (the screen blinks once while the system app manager restarts)"
+  say "starting the service (the screen may blink once while overlay apps are registered)"
   pkill -f "[c]leanyourtv/watchdog.sh"; pkill -f "[c]leanyourtv/helper.js"; pkill -f "[l]una-send -i -f"; sleep 1
   sh $D/10-cleanyourtv-home </dev/null
   [ "$(opt debloat)" = 1 ] && sh $D/debloat-stop.sh </dev/null
@@ -214,14 +222,18 @@ wait_home() {
     # the stand-in way (LG's native Home): sam still sees LG's native Home, and webapp-mgr holds the launcher
     if [ -f $R/tmp/cleanyourtv-home-standin ] && luna com.palm.webappmanager/listRunningApps '{}' | grep -q '"com.webos.app.home"'; then type=web; fi
     hv=$(service_answers)
-    if [ "$type" = web ] && [ "$hv" = "$VERSION" ]; then return 0; fi
+    if [ -f $D/DISABLE ]; then
+      [ "$hv" = "$VERSION" ] && return 0
+    elif [ "$type" = web ] && [ "$hv" = "$VERSION" ]; then
+      return 0
+    fi
   done
   return 1
 }
 verify() {
-  say "checking that the new Home came up..."
+  if [ -f $D/DISABLE ]; then say "checking that the service came up; LG's Home stays selected..."; else say "checking that the new Home came up..."; fi
   wait_home && return 0
-  if [ "$($TV get homeTakeover --home "$HOMEKIND")" = standin ] && [ "$(cat $D/home-method 2>/dev/null)" != mount ]; then
+  if [ ! -f $D/DISABLE ] && [ "$($TV get homeTakeover --home "$HOMEKIND")" = standin ] && [ "$(cat $D/home-method 2>/dev/null)" != mount ]; then
     # Some TVs with a native Home never run the stand-in program: with CRIU (criu_enabled on the kernel command line) LG's Home is
     # restored from a checkpoint instead of being started from its program (issues 72 and 84). The mount way works there, so it is
     # used from now on, also at the next boots (home-method). A TV where the stand-in works never gets here.
@@ -236,7 +248,11 @@ verify() {
     say "checking again..."
     wait_home && return 0
   fi
-  warn "the new Home did not come up (app type: ${type:-none}, service: ${hv:-not answering}); rolling back"
+  if [ -f $D/DISABLE ]; then
+    warn "the service did not come up (${hv:-not answering}); rolling back"
+  else
+    warn "the new Home did not come up (app type: ${type:-none}, service: ${hv:-not answering}); rolling back"
+  fi
   # restoring LG's Home live does not always work; without the boot scripts a restart brings it back
   cp /tmp/cleanyourtv-helper.log $MD/cytv-setup.log.service 2>/dev/null
   rm -f $INITD/10-cleanyourtv-home $INITD/15-cleanyourtv-debloat
@@ -250,7 +266,11 @@ finish() {
   ensure_apps
   say "done. Hold OK on an app to customise the dock, or use the Customise button at the top right."
   [ -d $R/usr/palm/applications/com.webos.app.fullhome ] && say "This TV also has LG's full-screen Home. If the Home button opens that instead of CleanYourTV: TV Settings > General > Home Settings > Home Style > Basic."
-  say "Back to LG's Home any time: switch off 'CleanYourTV as Home' in the manager app, or run: sh $D/undo-home.sh"
+  if [ -f $D/DISABLE ]; then
+    say "LG's Home stays selected. To use the CleanYourTV launcher as Home, enable 'CleanYourTV as Home' in the manager app."
+  else
+    say "Back to LG's Home any time: switch off 'CleanYourTV as Home' in the manager app, or run: sh $D/undo-home.sh"
+  fi
 }
 
 # ---- the order ----
